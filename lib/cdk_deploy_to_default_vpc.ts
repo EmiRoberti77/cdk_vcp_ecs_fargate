@@ -6,21 +6,13 @@ import * as ecspatterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 
-export class CdkDeployFargateStack extends cdk.Stack {
+export class CdkDeployDefaultFargateStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const vpc = new ec2.Vpc(this, "skeletonVPC", {
-      cidr: "10.10.0.0/16",
-      natGateways: 0,
-      maxAzs: 2,
-      subnetConfiguration: [
-        {
-          cidrMask: 20,
-          name: "public",
-          subnetType: ec2.SubnetType.PUBLIC,
-        },
-      ],
+    // Use the default VPC
+    const vpc = ec2.Vpc.fromLookup(this, "emi_vpc", {
+      isDefault: true,
     });
 
     const ecsSecurityGroup = new ec2.SecurityGroup(this, "ecsSecurityGroup", {
@@ -68,7 +60,7 @@ export class CdkDeployFargateStack extends cdk.Stack {
 
     const container = taskDefinition.addContainer("nginx-container", {
       image: ecs.ContainerImage.fromRegistry("nginx"),
-      command: ["nginx", "-g", "daemon off;"], // Ensure nginx stays running
+      //command: ["nginx", "-g", "daemon off;"], // Ensure nginx stays running
       memoryLimitMiB: 1024,
       cpu: 512,
       logging: ecs.LogDriver.awsLogs({
