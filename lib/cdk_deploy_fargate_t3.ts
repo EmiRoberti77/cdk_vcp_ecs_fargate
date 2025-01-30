@@ -36,11 +36,12 @@ export class FargateOAIXStack extends cdk.Stack {
       vpc,
       allowAllOutbound: true,
     });
-    securityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(80),
-      "Allow HTTP traffic"
-    );
+
+    // securityGroup.addIngressRule(
+    //   ec2.Peer.anyIpv4(),
+    //   ec2.Port.tcp(80),
+    //   "Allow HTTP traffic"
+    // );
 
     securityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
@@ -59,8 +60,8 @@ export class FargateOAIXStack extends cdk.Stack {
       this,
       oaix_prefix + "-task-def",
       {
-        memoryLimitMiB: 512,
-        cpu: 256,
+        memoryLimitMiB: 1024 * 3,
+        cpu: 256 * 4,
       }
     );
 
@@ -73,7 +74,7 @@ export class FargateOAIXStack extends cdk.Stack {
     );
 
     const container = taskDefinition.addContainer(oaix_prefix + "-container", {
-      image: ecs.ContainerImage.fromRegistry(oaix_prefix),
+      image: ecs.ContainerImage.fromRegistry(oaix_repo),
       logging: ecs.LogDriver.awsLogs({
         streamPrefix: streamPrefix,
         logRetention: logs.RetentionDays.ONE_WEEK,
@@ -81,9 +82,10 @@ export class FargateOAIXStack extends cdk.Stack {
     });
 
     // Map container port 80
-    container.addPortMappings({
-      containerPort: 80,
-    });
+    // container.addPortMappings({
+    //   containerPort: 80,
+    // });
+
     container.addPortMappings({
       containerPort: 8000,
     });
@@ -104,15 +106,15 @@ export class FargateOAIXStack extends cdk.Stack {
         }
       );
 
-    // Override ALB health check to ensure container is marked as "healthy"
-    // fargateService.targetGroup.configureHealthCheck({
-    //   path: "/", // Ensure your container responds to this path
-    //   port: "80",
-    //   healthyThresholdCount: 2,
-    //   unhealthyThresholdCount: 5, // More retries before marking unhealthy
-    //   timeout: cdk.Duration.seconds(5),
-    //   interval: cdk.Duration.seconds(30), // Give enough time for container to become healthy
-    // });
+    //Override ALB health check to ensure container is marked as "healthy"
+    fargateService.targetGroup.configureHealthCheck({
+      path: "/api/health", // Ensure your container responds to this path
+      port: "8000",
+      healthyThresholdCount: 2,
+      unhealthyThresholdCount: 5, // More retries before marking unhealthy
+      timeout: cdk.Duration.seconds(5),
+      interval: cdk.Duration.seconds(30), // Give enough time for container to become healthy
+    });
 
     // new cdk.CfnOutput(this, oaix_prefix + "-URL", {
     //   value: `http://${this.node.tryGetContext("nginx-loadbalancer-url")}`,
